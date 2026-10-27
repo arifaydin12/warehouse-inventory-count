@@ -1,0 +1,29 @@
+{
+  "name": "deposayim",
+  "version": "3.0.0",
+  "description": "Professional Warehouse Inventory Management System",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Siteyi index.html dosyasını tarayıcıda açarak kullanabilirsiniz.'"
+  },
+  "keywords": [
+    "warehouse",
+    "inventory",
+    "management",
+    "barcode",
+    "scanner",
+    "react",
+    "tailwindcss"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/deposayim.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+

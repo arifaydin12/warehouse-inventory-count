@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Envanter Sayım Uygulaması (Enterprise Edition) - Düzeltilmiş</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animasyonlar ve geçişler için özel CSS */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .slide-in-right {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        /* Navigasyon geçiş efekti */
+        .screen-transition {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        
+        /* Tema ayarlarını desteklemek için */
+        :root {
+            color-scheme: light dark;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        // React Hook'larını açığa çıkarma
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // --- MOCK VERİLERİ VE FONKSİYON TANIMLARI (Çalışması için Eklendi) ---
+
+        // 3.1. Çoklu Dil (i18n) Fonksiyonu ve Verisi
+        const i18nData = {
+            tr: {
+                appName: "Envanter Sayım Uygulaması",
+                enterpriseEdition: "Enterprise Sürüm",
+                dashboard: "Özet Ekran",
+                newCount: "Yeni Sayım",
+                settings: "Ayarlar",
+                logOut: "Çıkış Yap",
+                totalWarehouses: "Toplam Depo",
+                activeCounts: "Aktif Sayım",
+                exportToErp: "ERP'ye Aktar",
+                noCounts: "Henüz bir sayım kaydı yok.",
+                statusActive: "Aktif",
+                statusMaintenance: "Bakımda",
+                lastUpdated: "Son Güncelleme:",
+                warehouse: "Depo",
+                location: "Konum",
+                itemCode: "Ürün Kodu",
+                quantity: "Miktar",
+                timestamp: "Zaman Damgası",
+                undo: "Geri Al",
+                count: "Sayım",
+                filter: "Filtrele",
+                all: "Tümü",
+                search: "Ara...",
+                scanItem: "Ürün Kodu Tara",
+                scanLocation: "Konum Tara",
+                save: "Kaydet",
+                cancel: "İptal",
+                confirmDelete: "Bu kaydı silmek istediğinizden emin misiniz?",
+                delete: "Sil",
+                recordDeleted: "Kayıt silindi.",
+                recordSaved: "Kayıt kaydedildi.",
+                language: "Dil",
+                theme: "Tema",
+                light: "Aydınlık",
+                dark: "Karanlık",
+                system: "Sistem",
+                adminPanel: "Yönetici Paneli",
+                welcomeMessage: "Hoş geldiniz, {user}!",
+            },
+        };
+
+        const T = (key) => i18nData.tr[key] || `[${key}]`;
+
+        // 3.2. İkon Bileşenleri (lucide-react yerine basit SVG'ler kullanıldı)
+        // Tüm ikonlar için basit bir placeholder SVG
+        const createIcon = (d, viewBox = "0 0 24 24") => (
+            ({ className, style, onClick }) => (
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox={viewBox}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                    style={style}
+                    onClick={onClick}
+                >
+                    <path d={d} />
+                </svg>
+            )
+        );
+
+        const ChevronRight = createIcon("M9 18l6-6-6-6");
+        const ChevronLeft = createIcon("M15 18l-6-6 6-6");
+        const MapPin = createIcon("M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM12 12m-3 0a3 3 0 106 0a3 3 0 10-6 0");
+        const Package = createIcon("M12 2l10 5.5v11L12 22 2 17.5V6.5L12 2zM12 22v-9M22 7.5l-10 5.5L2 7.5");
+        const Camera = createIcon("M23 18a2 2 0 00-2-2h-3.268l-1.99-3.98a2 2 0 00-1.782-1.02H7a2 2 0 00-1.782 1.02L3.268 16H1a2 2 0 00-2 2v2a2 2 0 002 2h20a2 2 0 002-2v-2zM12 18m-4 0a4 4 0 108 0a4 4 0 10-8 0");
+        const Check = createIcon("M20 6L9 17l-5-5");
+        const Settings = createIcon("M12.22 2h-.44a2 2 0 00-2 2v.44a2 2 0 00-1.52 1.05l-.88 1.52a2 2 0 001.05 2.57l.44.24a2 2 0 00.52 1.94v.1a2 2 0 00-.52 1.94l-.44.24a2 2 0 00-1.05 2.57l.88 1.52a2 2 0 001.52 1.05v.44a2 2 0 002 2h.44a2 2 0 002-2v-.44a2 2 0 001.52-1.05l.88-1.52a2 2 0 00-1.05-2.57l-.44-.24a2 2 0 00-.52-1.94v-.1a2 2 0 00.52-1.94l.44-.24a2 2 0 001.05-2.57l-.88-1.52a2 2 0 00-1.52-1.05v-.44a2 2 0 00-2-2zM12 15m-3 0a3 3 0 106 0a3 3 0 10-6 0");
+        const LogOut = createIcon("M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3");
+        const Plus = createIcon("M12 5v14M5 12h14");
+        const Edit2 = createIcon("M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z");
+        const Trash2 = createIcon("M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6");
+        const Search = createIcon("M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35");
+
+
+        // 3.3. Başlangıç Verileri ve Durum Değişkenleri
+        const languages = [
+            { code: 'tr', name: 'Türkçe' },
+            { code: 'en', name: 'English' },
+        ];
+
+        const warehouses = [
+            { id: 1, name: 'Merkez Depo A', type: 'Ana', capacity: 75, status: 'active', location: 'A-01' },
+            { id: 2, name: 'Şube Depo B', type: 'Yan', capacity: 55, status: 'active', location: 'B-02' },
+            { id: 3, name: 'İade Alanı', type: 'Özel', capacity: 95, status: 'maintenance', location: 'C-03' },
+        ];
+
+        let nextCountId = 5;
+        const initialCounts = [
+            { id: 1, warehouseId: 1, locationCode: 'A-01-RAK-01', itemCode: '1001-ELMA', quantity: 150, timestamp: Date.now() - 3600000, user: 'Uğur' },
+            { id: 2, warehouseId: 2, locationCode: 'B-02-RAK-05', itemCode: '2005-ARMUT', quantity: 200, timestamp: Date.now() - 7200000, user: 'Ayşe' },
+            { id: 3, warehouseId: 1, locationCode: 'A-01-RAK-10', itemCode: '1003-MUZ', quantity: 75, timestamp: Date.now() - 1800000, user: 'Uğur' },
+            { id: 4, warehouseId: 3, locationCode: 'C-03-HASAR', itemCode: '9001-HASARLI', quantity: 12, timestamp: Date.now() - 300000, user: 'Uğur' },
+        ];
+
+        // 3.4. Ana Uygulama Bileşeni
+        const App = () => {
+            const [currentScreen, setCurrentScreen] = useState('dashboard');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [isAdmin] = useState(true); // Mock: Yönetici yetkisi
+            const [currentLanguage, setCurrentLanguage] = useState('tr');
+            const [currentTheme, setCurrentTheme] = useState('system'); // 'light', 'dark', 'system'
+            const [counts, setCounts] = useState(initialCounts);
+            const [filterWarehouse, setFilterWarehouse] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [isNewCountModalOpen, setIsNewCountModalOpen] = useState(false);
+            const [editCount, setEditCount] = useState(null);
+            const [undoNotification, setUndoNotification] = useState(null);
+            const [lastDeletedCount, setLastDeletedCount] = useState(null);
+
+            // Temel işlevler
+            const switchScreen = (screen) => {
+                setCurrentScreen(screen);
+                setIsMenuOpen(false);
+            };
+
+            const toggleTheme = () => {
+                const nextTheme = currentTheme === 'light' ? 'dark' : currentTheme === 'dark' ? 'system' : 'light';
+                setCurrentTheme(nextTheme);
+                // Gerçek bir uygulamada tema ayarı localStorage'a kaydedilirdi.
+            };
+
+            const getThemeClass = () => {
+                if (currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    return 'dark';
+                }
+                return '';
+            };
+
+            useEffect(() => {
+                const root = document.documentElement;
+                root.classList.remove('light', 'dark');
+                const themeClass = getThemeClass();
+                if (themeClass) {
+                    root.classList.add(themeClass);
+                }
+            }, [currentTheme]);
+
+            const canEditOrDelete = (count) => {
+                // Sadece son 30 dakikadaki kendi kayıtlarını düzenleyebilir/silebilir
+                return isAdmin || (count.user === 'Uğur' && (Date.now() - count.timestamp) < 1800000);
+            };
+
+            const handleDelete = (id) => {
+                const countToDelete = counts.find(c => c.id === id);
+                if (!countToDelete) return;
+
+                const newCounts = counts.filter(c => c.id !== id);
+                setCounts(newCounts);
+                setLastDeletedCount(countToDelete);
+
+                // Geri Al bildirimi göster
+                setUndoNotification({ message: T('recordDeleted'), action: 'delete' });
+                setTimeout(() => setUndoNotification(null), 5000);
+            };
+
+            const handleUndo = () => {
+                if (lastDeletedCount) {
+                    setCounts(prevCounts => [...prevCounts, lastDeletedCount].sort((a, b) => b.timestamp - a.timestamp));
+                    setLastDeletedCount(null);
+                    setUndoNotification(null);
+                }
+            };
+
+            // Sayım Filtreleme ve Arama Mantığı
+            const filteredCounts = useMemo(() => {
+                let list = counts;
+
+                if (filterWarehouse !== 'all') {
+                    list = list.filter(c => c.warehouseId === parseInt(filterWarehouse));
+                }
+
+                if (searchQuery) {
+                    const query = searchQuery.toLowerCase();
+                    list = list.filter(c =>
+                        c.locationCode.toLowerCase().includes(query) ||
+                        c.itemCode.toLowerCase().includes(query) ||
+                        c.user.toLowerCase().includes(query)
+                    );
+                }
+
+                return list.sort((a, b) => b.timestamp - a.timestamp);
+            }, [counts, filterWarehouse, searchQuery]);
+
+
+            // Bileşenler
+
+            // Menu Bileşeni
+            const Menu = () => (
+                <div className={`fixed inset-0 z-40 ${isMenuOpen ? 'block' : 'hidden'}`} onClick={() => setIsMenuOpen(false)}>
+                    <div className="fixed top-0 left-0 h-full w-64 bg-white shadow-2xl dark:bg-slate-900 transition-transform duration-300 transform"
+                        style={{ transform: isMenuOpen ? 'translateX(0)' : 'translateX(-100%)' }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 pt-12">
+                            <div className="mb-8 p-3 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-xl shadow-lg">
+                                <h1 className="text-xl font-bold">{T('appName')}</h1>
+                                <p className="text-xs opacity-80">{T('enterpriseEdition')}</p>
+                            </div>
+                            <nav className="space-y-2">
+                                <button
+                                    onClick={() => switchScreen('dashboard')}
+                                    className={`w-full flex items-center p-3 rounded-xl transition duration-150 ${currentScreen === 'dashboard' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800'}`}>
+                                    <Package className="w-5 h-5 mr-3" />
+                                    <span className="font-medium">{T('dashboard')}</span>
+                                </button>
+                                <button
+                                    onClick={() => switchScreen('new-count')}
+                                    className={`w-full flex items-center p-3 rounded-xl transition duration-150 ${currentScreen === 'new-count' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800'}`}>
+                                    <Plus className="w-5 h-5 mr-3" />
+                                    <span className="font-medium">{T('newCount')}</span>
+                                </button>
+                                <hr className="my-4 border-gray-200 dark:border-slate-700" />
+                                <button
+                                    onClick={() => switchScreen('settings')}
+                                    className={`w-full flex items-center p-3 rounded-xl transition duration-150 ${currentScreen === 'settings' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800'}`}>
+                                    <Settings className="w-5 h-5 mr-3" />
+                                    <span className="font-medium">{T('settings')}</span>
+                                </button>
+                            </nav>
+                            <div className="absolute bottom-0 left-0 w-full p-4 border-t border-gray-100 dark:border-slate-800">
+                                <button
+                                    onClick={() => alert(T('logOut'))}
+                                    className="w-full flex items-center p-3 text-red-500 hover:bg-red-50 rounded-xl transition duration-150 dark:hover:bg-slate-800">
+                                    <LogOut className="w-5 h-5 mr-3" />
+                                    <span className="font-medium">{T('logOut')}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Yeni Sayım/Düzenleme Bileşeni
+            const NewCountModal = ({ countToEdit, onClose }) => {
+                const isEditing = !!countToEdit;
+                const [warehouseId, setWarehouseId] = useState(isEditing ? countToEdit.warehouseId : (warehouses.length > 0 ? warehouses[0].id : ''));
+                const [locationCode, setLocationCode] = useState(isEditing ? countToEdit.locationCode : '');
+                const [itemCode, setItemCode] = useState(isEditing ? countToEdit.itemCode : '');
+                const [quantity, setQuantity] = useState(isEditing ? countToEdit.quantity : 1);
+                const [isScanning, setIsScanning] = useState(false);
+                const [scanType, setScanType] = useState(null); // 'item' veya 'location'
+
+                const handleQuantityChange = (e) => {
+                    const val = e.target.value;
+                    // Sadece pozitif tamsayılara izin ver
+                    if (val === '' || (val.match(/^\d+$/) && parseInt(val) >= 0)) {
+                        setQuantity(val === '' ? 0 : parseInt(val));
+                    }
+                };
+
+                const handleScan = (type) => {
+                    setScanType(type);
+                    setIsScanning(true);
+                    // Mock tarama: 1 saniye sonra bir kod döndür
+                    setTimeout(() => {
+                        setIsScanning(false);
+                        const mockCode = type === 'item' ? '1004-PORTAKAL' : 'A-01-RAK-15';
+                        if (type === 'item') {
+                            setItemCode(mockCode);
+                        } else {
+                            setLocationCode(mockCode);
+                        }
+                    }, 1000);
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if (!warehouseId || !locationCode || !itemCode || quantity <= 0) {
+                        alert("Lütfen tüm alanları doldurun ve geçerli bir miktar girin.");
+                        return;
+                    }
+
+                    const newCount = {
+                        warehouseId: parseInt(warehouseId),
+                        locationCode,
+                        itemCode,
+                        quantity,
+                        timestamp: Date.now(),
+                        user: 'Uğur' // Mock kullanıcı
+                    };
+
+                    if (isEditing) {
+                        setCounts(prevCounts => prevCounts.map(c => c.id === countToEdit.id ? { ...c, ...newCount, id: c.id } : c));
+                    } else {
+                        nextCountId++;
+                        setCounts(prevCounts => [{ ...newCount, id: nextCountId }, ...prevCounts]);
+                    }
+
+                    setUndoNotification({ message: T('recordSaved'), action: 'save' });
+                    setTimeout(() => setUndoNotification(null), 5000);
+
+                    onClose();
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 screen-transition">
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl slide-in-right">
+                            <div className="p-5 border-b border-gray-100 dark:border-slate-700">
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-white">{isEditing ? `${T('edit2')} ${T('count')}` : T('newCount')}</h2>
+                            </div>
+                            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{T('warehouse')}</label>
+                                    <select
+                                        value={warehouseId}
+                                        onChange={(e) => setWarehouseId(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 dark:text-white"
+                                    >
+                                        {warehouses.map(w => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{T('location')}</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={locationCode}
+                                            onChange={(e) => setLocationCode(e.target.value)}
+                                            placeholder="A-01-RAK-01"
+                                            className="flex-grow p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 dark:text-white"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleScan('location')}
+                                            disabled={isScanning && scanType === 'location'}
+                                            className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition duration-150 shadow-md disabled:bg-blue-300">
+                                            {isScanning && scanType === 'location' ? '...' : <Camera className="w-6 h-6" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{T('itemCode')}</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={itemCode}
+                                            onChange={(e) => setItemCode(e.target.value)}
+                                            placeholder="1001-ELMA"
+                                            className="flex-grow p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 dark:text-white"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleScan('item')}
+                                            disabled={isScanning && scanType === 'item'}
+                                            className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition duration-150 shadow-md disabled:bg-blue-300">
+                                            {isScanning && scanType === 'item' ? '...' : <Camera className="w-6 h-6" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{T('quantity')}</label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        value={quantity}
+                                        onChange={handleQuantityChange}
+                                        className="w-full p-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 dark:text-white"
+                                    />
+                                </div>
+                                <div className="pt-4 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition duration-150 font-medium">
+                                        {T('cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition duration-150 font-semibold shadow-lg shadow-indigo-500/50">
+                                        {T('save')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Ana Ekranların Render Edilmesi
+            const bgGradient = 'from-indigo-50/50 to-white dark:from-slate-900/50 dark:to-slate-900';
+
+            // Dashboard Screen
+            if (currentScreen === 'dashboard') {
+                return (
+                    <div className={`min-h-screen bg-gradient-to-br ${bgGradient} p-4 transition-colors duration-300 dark:text-white fade-in`}>
+                        {/* Header */}
+                        <header className="flex justify-between items-center mb-6">
+                            <button onClick={() => setIsMenuOpen(true)} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition duration-150">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                            </button>
+                            <h1 className="text-xl font-bold">{T('dashboard')}</h1>
+                            <button onClick={() => switchScreen('new-count')} className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition duration-150 shadow-md shadow-indigo-500/50">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </header>
+
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border-t-4 border-blue-500 dark:border-blue-600">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{T('totalWarehouses')}</p>
+                                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">{warehouses.length}</p>
+                            </div>
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border-t-4 border-indigo-500 dark:border-indigo-600">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{T('activeCounts')}</p>
+                                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">{counts.length}</p>
+                            </div>
+                        </div>
+
+                        {/* Export Button (Admin Only) */}
+                        <div className="mb-6">
+                            <button
+                                onClick={() => alert("ERP'ye aktarım başlatıldı...")}
+                                disabled={!isAdmin}
+                                className={`w-full flex items-center justify-center p-3 rounded-xl transition duration-150 font-semibold shadow-lg ${
+                                    isAdmin ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/50' : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                }`}>
+                                <Check className="w-5 h-5 mr-2" />
+                                {T('exportToErp')}
+                            </button>
+                        </div>
+
+                        {/* Filter and Search */}
+                        <div className="flex gap-2 mb-4">
+                            <select
+                                value={filterWarehouse}
+                                onChange={(e) => setFilterWarehouse(e.target.value)}
+                                className="flex-shrink-0 p-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-700 dark:text-gray-300 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                            >
+                                <option value="all">{T('all')}</option>
+                                {warehouses.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                            </select>
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder={T('search')}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full p-3 pl-10 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Counts List */}
+                        <div className="space-y-3">
+                            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">{T('count')} ({filteredCounts.length})</h2>
+                            {filteredCounts.length === 0 ? (
+                                <p className="text-center text-gray-500 dark:text-gray-400 p-8 bg-white dark:bg-slate-800 rounded-xl shadow">{T('noCounts')}</p>
+                            ) : (
+                                filteredCounts.map(count => (
+                                    <div key={count.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md transition duration-200 hover:shadow-lg flex justify-between items-start">
+                                        <div className="flex-grow">
+                                            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{warehouses.find(w => w.id === count.warehouseId)?.name}</p>
+                                            <p className="text-lg font-bold text-gray-800 dark:text-white mt-1 flex items-center gap-2">
+                                                <MapPin className="w-5 h-5 text-red-500 flex-shrink-0" />
+                                                {count.locationCode}
+                                            </p>
+                                            <p className="text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-2">
+                                                <Package className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                                {count.itemCode}
+                                            </p>
+                                            <p className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mt-2">{count.quantity}</p>
+                                            <p className="text-xs text-gray-400 mt-2">
+                                                {T('lastUpdated')} {new Date(count.timestamp).toLocaleString(currentLanguage + '-' + currentLanguage.toUpperCase(), { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })} ({count.user})
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-col space-y-2 ml-4">
+                                            <button
+                                                onClick={() => { setEditCount(count); setIsNewCountModalOpen(true); }}
+                                                disabled={!canEditOrDelete(count)}
+                                                className={`p-2 rounded-full transition duration-150 ${canEditOrDelete(count) ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-800 dark:text-yellow-200' : 'bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-gray-500 cursor-not-allowed'}`}>
+                                                <Edit2 className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => { if (window.confirm(T('confirmDelete'))) handleDelete(count.id); }}
+                                                disabled={!canEditOrDelete(count)}
+                                                className={`p-2 rounded-full transition duration-150 ${canEditOrDelete(count) ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-800 dark:text-red-200' : 'bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-gray-500 cursor-not-allowed'}`}>
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* New Count Modal */}
+                        {isNewCountModalOpen && (
+                            <NewCountModal
+                                countToEdit={editCount}
+                                onClose={() => { setIsNewCountModalOpen(false); setEditCount(null); }}
+                            />
+                        )}
+
+                        {/* Undo Notification */}
+                        {undoNotification && (
+                            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 p-3 bg-gray-800 text-white rounded-xl shadow-2xl flex items-center gap-4 animate-bounce fade-in z-50">
+                                <span>{undoNotification.message}</span>
+                                {undoNotification.action === 'delete' && (
+                                    <button onClick={handleUndo} className="font-semibold text-yellow-300 hover:text-yellow-400 transition duration-150">
+                                        {T('undo')}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Menu */}
+                        <Menu />
+                    </div>
+                );
+            }
+
+            // New Count Screen (Eski 'new-count' ekranı artık doğrudan dashboard'daki modal ile yönetiliyor, ancak switchScreen'i desteklemek için bir placeholder bırakalım)
+            if (currentScreen === 'new-count') {
+                return (
+                    <div className={`min-h-screen bg-gradient-to-br ${bgGradient} p-4 transition-colors duration-300 dark:text-white fade-in`}>
+                        <header className="flex items-center mb-6">
+                            <button onClick={() => switchScreen('dashboard')} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition duration-150" style={{ transform: 'rotate(180deg)' }}>
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+                            <h1 className="text-xl font-bold ml-4">{T('newCount')}</h1>
+                        </header>
+                        <div className="p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
+                            <p className="text-gray-500 dark:text-gray-400">{T('newCount')} formu buraya taşınmıştır. Dashboard'daki <Plus/> butonu ile açılabilir.</p>
+                            <button onClick={() => { setIsNewCountModalOpen(true); switchScreen('dashboard'); }} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl shadow-lg">Modal Aç</button>
+                        </div>
+                        {isNewCountModalOpen && (
+                            <NewCountModal
+                                countToEdit={null}
+                                onClose={() => { setIsNewCountModalOpen(false); }}
+                            />
+                        )}
+                        <Menu />
+                    </div>
+                );
+            }
+
+            // Settings Screen
+            if (currentScreen === 'settings') {
+                return (
+                    <div className={`min-h-screen bg-gradient-to-br ${bgGradient} p-4 transition-colors duration-300 dark:text-white fade-in`}>
+                        <header className="flex items-center mb-6">
+                            <button onClick={() => switchScreen('dashboard')} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition duration-150" style={{ transform: 'rotate(180deg)' }}>
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+                            <h1 className="text-xl font-bold ml-4">{T('settings')}</h1>
+                        </header>
+
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg space-y-6">
+                            {/* Dil Ayarı */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">{T('language')}</h2>
+                                <div className="flex justify-between items-center bg-gray-50 dark:bg-slate-700 p-4 rounded-xl">
+                                    <label htmlFor="language-select" className="text-gray-700 dark:text-gray-300">{T('language')}</label>
+                                    <select
+                                        id="language-select"
+                                        value={currentLanguage}
+                                        onChange={(e) => setCurrentLanguage(e.target.value)}
+                                        className="p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:text-white"
+                                    >
+                                        {languages.map(lang => (
+                                            <option key={lang.code} value={lang.code}>{lang.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Tema Ayarı */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">{T('theme')}</h2>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {['light', 'dark', 'system'].map(theme => (
+                                        <button
+                                            key={theme}
+                                            onClick={() => setCurrentTheme(theme)}
+                                            className={`p-4 rounded-xl text-center transition duration-150 border-2 ${
+                                                currentTheme === theme
+                                                    ? 'bg-indigo-500 text-white border-indigo-600 shadow-lg'
+                                                    : 'bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600'
+                                            }`}
+                                        >
+                                            <p className="font-medium">{T(theme)}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Yönetici Paneli Linki (Admin ise) */}
+                            {isAdmin && (
+                                <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
+                                    <button
+                                        onClick={() => alert("Yönetici Paneline Yönlendiriliyor...")}
+                                        className="w-full flex items-center justify-center p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition duration-150 font-semibold shadow-md shadow-red-500/50">
+                                        <Settings className="w-5 h-5 mr-2" />
+                                        {T('adminPanel')}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <Menu />
+                    </div>
+                );
+            }
+
+            // Default fallback
+            return (
+                <div className="min-h-screen bg-gray-100 dark:bg-slate-900 p-4 flex items-center justify-center text-red-500">
+                    Ekran bulunamadı: {currentScreen}
+                </div>
+            );
+        };
+
+        // Uygulamayı DOM'a render etme
+        ReactDOM.render(<App />, document.getElementById('root'));
+
+    </script>
+</body>
+</html>
