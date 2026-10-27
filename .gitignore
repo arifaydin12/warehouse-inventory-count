@@ -1,42 +1,22 @@
-# Dependencies
+# Dependencies (the app has none; these only appear when optional tooling such as puppeteer-core is installed)
 node_modules/
 package-lock.json
 
-# Backups
-*.backup
-*-backup.html
-*-old.html
-
-# OS Files
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# IDE
+# Editors
 .vscode/
 .idea/
 *.swp
-*.swo
 *~
 
-# Logs
+# Logs and temporary files
 *.log
-npm-debug.log*
+*.tmp
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Environment
+# Local environment
 .env
 .env.local
-
-# Build
-dist/
-build/
-
-# Temporary files
-*.tmp
-*.temp
-

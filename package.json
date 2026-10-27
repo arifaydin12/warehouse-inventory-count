@@ -1,29 +1,24 @@
 {
-  "name": "deposayim",
-  "version": "3.0.0",
-  "description": "Professional Warehouse Inventory Management System",
-  "main": "index.html",
+  "name": "warehouse-inventory-count",
+  "version": "4.0.0",
+  "description": "Browser-based warehouse stock-counting app: role-based access, barcode counting sessions, discrepancy review, PDF/CSV reports, installable PWA.",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "start": "echo 'Siteyi index.html dosyasını tarayıcıda açarak kullanabilirsiniz.'"
+    "start": "node scripts/serve.mjs",
+    "test": "node --test",
+    "test:e2e": "node tests/e2e/run.cjs"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "keywords": [
     "warehouse",
     "inventory",
-    "management",
+    "stock-count",
     "barcode",
-    "scanner",
-    "react",
-    "tailwindcss"
+    "pwa",
+    "es-modules"
   ],
-  "author": "Your Name",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/deposayim.git"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "http-server": "^14.1.1"
-  }
+  "license": "MIT"
 }
-
