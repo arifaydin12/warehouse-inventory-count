@@ -2,7 +2,7 @@
 
 A browser-based stock-counting application for warehouses: barcode counting sessions, discrepancy review with approve / recount workflow, PDF and CSV reports, role-based access and an installable offline-capable PWA. It is a plain static site (HTML + CSS + ES modules, no build step, no framework, no runtime dependencies), so it runs from any static file server, including GitHub Pages.
 
-**[Live demo](https://vaas125.github.io/warehouse-inventory-count/)** · Languages: English (default), German, Polish
+**[Live demo](https://arifaydin12.github.io/warehouse-inventory-count/)** · Languages: English (default), German, Polish
 
 ![Dashboard](docs/screenshot.png)
 
